@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Real IP Finder</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0d1117;
+      color: #c9d1d9;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ===== NETWORK CANVAS ===== */
+    #netCanvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ===== PIN SCREEN ===== */
+    #pinScreen {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: #0d111799;
+      backdrop-filter: blur(4px);
+    }
+    #pinScreen.hidden { display: none; }
+
+    .pin-card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 20px;
+      padding: 40px 36px;
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 24px 80px #00000070, 0 0 0 1px #58a6ff12;
+      animation: pinIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    @keyframes pinIn {
+      from { opacity: 0; transform: scale(0.88) translateY(20px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .pin-icon {
+      font-size: 2.8rem;
+      margin-bottom: 16px;
+      filter: drop-shadow(0 0 16px #58a6ff60);
+    }
+    .pin-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #e6edf3;
+      margin-bottom: 6px;
+    }
+    .pin-subtitle {
+      font-size: 0.85rem;
+      color: #6e7681;
+      margin-bottom: 28px;
+    }
+
+    .pin-input-wrap {
+      position: relative;
+      margin-bottom: 16px;
+    }
+    .pin-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 1.5rem;
+      letter-spacing: 0.5em;
+      text-align: center;
+      background: #0d1117;
+      border: 1.5px solid #30363d;
+      border-radius: 12px;
+      color: #e6edf3;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      -webkit-text-security: disc;
+    }
+    .pin-input:focus {
+      border-color: #58a6ff;
+      box-shadow: 0 0 0 3px #58a6ff20;
+    }
+    .pin-input.error {
+      border-color: #f85149;
+      box-shadow: 0 0 0 3px #f8514920;
+      animation: shake 0.35s ease;
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20%      { transform: translateX(-8px); }
+      60%      { transform: translateX(8px); }
+    }
+
+    .pin-error {
+      font-size: 0.82rem;
+      color: #f85149;
+      min-height: 20px;
+      margin-bottom: 12px;
+    }
+
+    /* Number pad */
+    .pin-pad {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .pad-btn {
+      padding: 16px 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      color: #c9d1d9;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s, border-color 0.15s;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+    .pad-btn:hover  { background: #2d333b; border-color: #58a6ff40; }
+    .pad-btn:active { background: #58a6ff22; transform: scale(0.94); border-color: #58a6ff; }
+    .pad-btn.zero   { grid-column: 2; }
+    .pad-btn.del    { background: #1c2128; color: #8b949e; font-size: 1rem; }
+    .pad-btn.del:hover  { background: #f8514920; color: #f85149; border-color: #f8514940; }
+
+    .pin-submit {
+      width: 100%;
+      padding: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #238636, #2ea043);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pin-submit:hover  { background: linear-gradient(135deg, #2ea043, #3fb950); box-shadow: 0 4px 16px #23863650; }
+    .pin-submit:active { transform: scale(0.97); }
+    .pin-submit:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
+
+    /* PIN dots indicator */
+    .pin-dots {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .pin-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 2px solid #30363d;
+      background: transparent;
+      transition: all 0.2s;
+    }
+    .pin-dot.filled {
+      background: #58a6ff;
+      border-color: #58a6ff;
+      box-shadow: 0 0 8px #58a6ff80;
+    }
+
+    /* ===== HERO ===== */
+    #hero {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      text-align: center;
+      transition: min-height 0.5s ease, padding 0.5s ease;
+    }
+
+    h1 {
+      font-size: clamp(1.6rem, 5vw, 2.4rem);
+      color: #58a6ff;
+      margin-bottom: 10px;
+      letter-spacing: -0.5px;
+      text-shadow: 0 0 40px #58a6ff40;
+    }
+    .subtitle {
+      color: #8b949e;
+      margin-bottom: 36px;
+      font-size: clamp(0.82rem, 2.5vw, 0.95rem);
+      max-width: 520px;
+    }
+
+    /* ===== SEARCH BOX ===== */
+    .search-box {
+      display: flex;
+      gap: 0;
+      width: 100%;
+      max-width: 660px;
+      background: #161b22cc;
+      border: 1px solid #30363d;
+      border-radius: 14px;
+      padding: 5px;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 8px 32px #00000060, 0 0 0 1px #58a6ff0a;
+      transition: box-shadow 0.3s, border-color 0.3s;
+    }
+    .search-box:focus-within {
+      border-color: #58a6ff55;
+      box-shadow: 0 8px 40px #58a6ff18, 0 0 0 1px #58a6ff25;
+    }
+    #urlInput {
+      flex: 1;
+      padding: 13px 16px;
+      background: transparent;
+      border: none;
+      color: #c9d1d9;
+      font-size: 1rem; /* >= 16px prevents iOS zoom */
+      outline: none;
+      min-width: 0;
+    }
+    #urlInput::placeholder { color: #484f58; }
+    #searchBtn {
+      padding: 13px 22px;
+      background: linear-gradient(135deg, #238636, #2ea043);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #searchBtn:hover    { background: linear-gradient(135deg, #2ea043, #3fb950); transform: translateY(-1px); box-shadow: 0 4px 16px #23863650; }
+    #searchBtn:active   { transform: translateY(0); }
+    #searchBtn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ===== MAIN CONTENT ===== */
+    .main {
+      position: relative;
+      z-index: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 16px 60px;
+    }
+
+    /* ===== LOADER ===== */
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .loader { display: none; padding: 40px 16px; text-align: center; }
+    .loader.active { display: block; animation: cardIn 0.3s ease; }
+
+    .radar-wrap { position: relative; width: 100px; height: 100px; margin: 0 auto 24px; }
+    .radar-ring {
+      position: absolute; border-radius: 50%;
+      border: 2px solid #58a6ff; opacity: 0;
+      animation: radarPulse 2.4s ease-out infinite;
+    }
+    .radar-ring:nth-child(1) { inset: 34px; animation-delay: 0s; }
+    .radar-ring:nth-child(2) { inset: 17px; animation-delay: 0.7s; }
+    .radar-ring:nth-child(3) { inset: 0;    animation-delay: 1.4s; }
+    @keyframes radarPulse {
+      0%   { transform: scale(0.4); opacity: 0.9; }
+      100% { transform: scale(1);   opacity: 0; }
+    }
+    .radar-core {
+      position: absolute; inset: 37px;
+      background: #58a6ff; border-radius: 50%;
+      box-shadow: 0 0 12px #58a6ff, 0 0 28px #58a6ff60;
+      animation: corePulse 1.2s ease-in-out infinite alternate;
+    }
+    @keyframes corePulse {
+      from { box-shadow: 0 0 8px #58a6ff, 0 0 18px #58a6ff50; }
+      to   { box-shadow: 0 0 16px #58a6ff, 0 0 36px #58a6ffaa; }
+    }
+    .loader-title { font-size: 1.05rem; color: #c9d1d9; font-weight: 600; margin-bottom: 20px; }
+    .loader-title .dots { color: #58a6ff; }
+
+    .scan-steps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7px;
+      max-width: 540px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    @media(max-width: 500px) { .scan-steps { grid-template-columns: 1fr; } }
+
+    .step-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 11px; border-radius: 8px;
+      background: #161b22cc; border: 1px solid #21262d;
+      font-size: 0.78rem; color: #484f58;
+      opacity: 0; transform: translateY(6px);
+      transition: opacity 0.35s ease, transform 0.35s ease,
+                  border-color 0.3s, background 0.3s, color 0.3s;
+      backdrop-filter: blur(8px);
+    }
+    .step-item.visible { opacity: 1; transform: translateY(0); color: #8b949e; }
+    .step-item.active  { border-color: #58a6ff50; background: #58a6ff12; color: #58a6ff; }
+    .step-item.done    { border-color: #23863650; background: #23863612; color: #3fb950; }
+    .step-icon { font-size: 0.95rem; flex-shrink: 0; }
+    .step-spinner {
+      margin-left: auto; width: 11px; height: 11px;
+      border: 2px solid #30363d; border-top-color: #58a6ff;
+      border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    .step-check { margin-left: auto; color: #3fb950; font-size: 0.85rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ===== CARDS ===== */
+    @keyframes shimmerLine {
+      0%   { left: -60%; }
+      100% { left: 120%; }
+    }
+    .results { display: none; }
+    .results.active { display: block; animation: cardIn 0.4s ease; }
+
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 14px;
+      position: relative; overflow: hidden;
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .card:hover { border-color: #58a6ff35; box-shadow: 0 0 24px #58a6ff0c; }
+    .card::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -60%;
+      width: 40%; height: 1px;
+      background: linear-gradient(90deg, transparent, #58a6ff60, transparent);
+      animation: shimmerLine 4s linear infinite;
+    }
+    .card-title {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px;
+      color: #8b949e; margin-bottom: 12px; font-weight: 700;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .domain-name { font-size: clamp(1.1rem, 4vw, 1.4rem); font-weight: 700; color: #e6edf3; word-break: break-all; }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 9px; border-radius: 20px;
+      font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle;
+    }
+    .badge-cf    { background: #f6821015; color: #f68210; border: 1px solid #f6821045; }
+    .badge-aws   { background: #ff990015; color: #ff9900; border: 1px solid #ff990045; }
+    .badge-clean { background: #23863615; color: #2ea043; border: 1px solid #23863645; }
+
+    .ip-list { list-style: none; }
+    .ip-list li {
+      display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
+      padding: 9px 0; border-bottom: 1px solid #21262d;
+    }
+    .ip-list li:last-child { border-bottom: none; }
+    .ip-flag  { font-size: 1.1rem; flex-shrink: 0; }
+    .ip-addr  {
+      font-size: clamp(0.9rem, 3vw, 1.05rem); color: #79c0ff; font-weight: 700;
+      font-family: 'Courier New', monospace; min-width: 130px; word-break: break-all;
+    }
+    .ip-addr.highlight { color: #3fb950; }
+    .ip-geo   { font-size: 0.78rem; color: #8b949e; display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 100px; }
+    .ip-geo-country { color: #c9d1d9; font-weight: 500; }
+    .ip-geo-org     { color: #6e7681; font-size: 0.72rem; }
+    .ip-source {
+      font-size: 0.72rem; color: #6e7681; font-family: monospace;
+      flex-basis: 100%; padding-left: 26px; margin-top: -4px;
+      word-break: break-all;
+    }
+    .ip-tag { font-size: 0.65rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
+    .tag-cf   { background: #f6821020; color: #f68210; }
+    .tag-aws  { background: #ff990020; color: #ff9900; }
+    .tag-real { background: #23863620; color: #3fb950; }
+    .method-badge { font-size: 0.62rem; padding: 1px 5px; border-radius: 3px; background: #21262d; color: #6e7681; font-family: monospace; }
+
+    .shodan-box { margin-top: 5px; margin-left: 26px; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .shodan-port { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #1f2937; color: #60a5fa; border: 1px solid #2d3f56; font-family: monospace; }
+    .shodan-host { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #1a2420; color: #4ade80; border: 1px solid #2a3e30; font-family: monospace; }
+    .shodan-vuln { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #2a1a1a; color: #f87171; border: 1px solid #3e2222; font-family: monospace; }
+
+    .header-row {
+      display: flex; gap: 8px; padding: 7px 0;
+      border-bottom: 1px solid #21262d; font-size: 0.82rem;
+      flex-wrap: wrap;
+    }
+    .header-row:last-child { border-bottom: none; }
+    .header-key { color: #f78166; font-family: monospace; min-width: 160px; flex-shrink: 0; }
+    .header-val { color: #a5d6ff; font-family: monospace; word-break: break-all; flex: 1; }
+
+    .alert { padding: 12px 15px; border-radius: 9px; margin-bottom: 14px; font-size: 0.88rem; line-height: 1.5; }
+    .alert-warning { background: #f6821010; border: 1px solid #f6821045; color: #f68210; }
+    .alert-info    { background: #58a6ff10; border: 1px solid #58a6ff35; color: #58a6ff; }
+    .alert-error   { background: #f8514920; border: 1px solid #f8514945; color: #f85149; }
+    .no-results    { color: #484f58; font-style: italic; font-size: 0.88rem; }
+
+    .methods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+    .method-card {
+      background: #0d1117; border: 1px solid #21262d;
+      border-radius: 8px; padding: 9px 12px;
+      font-size: 0.78rem; color: #8b949e; line-height: 1.5;
+    }
+    .method-card strong { color: #c9d1d9; display: block; margin-bottom: 2px; }
+
+    /* ===== MOBILE ===== */
+    @media (max-width: 480px) {
+      .pin-card { padding: 28px 20px; }
+      .pad-btn  { padding: 14px 8px; font-size: 1.1rem; }
+      .search-box { border-radius: 12px; }
+      #urlInput { padding: 12px 12px; }
+      #searchBtn { padding: 12px 14px; font-size: 0.88rem; }
+      .card { padding: 13px 14px; }
+      .methods-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="netCanvas"></canvas>
+
+<!-- PIN Screen -->
+<div id="pinScreen">
+  <div class="pin-card">
+    <div class="pin-icon">🔐</div>
+    <div class="pin-title">Kirish uchun PIN</div>
+    <div class="pin-subtitle">Real IP Finder — maxfiy panel</div>
+
+    <div class="pin-dots">
+      <div class="pin-dot" id="d0"></div>
+      <div class="pin-dot" id="d1"></div>
+      <div class="pin-dot" id="d2"></div>
+      <div class="pin-dot" id="d3"></div>
+    </div>
+
+    <div class="pin-error" id="pinError"></div>
+
+    <!-- Number pad -->
+    <div class="pin-pad">
+      <button class="pad-btn" onclick="padPress('1')">1</button>
+      <button class="pad-btn" onclick="padPress('2')">2</button>
+      <button class="pad-btn" onclick="padPress('3')">3</button>
+      <button class="pad-btn" onclick="padPress('4')">4</button>
+      <button class="pad-btn" onclick="padPress('5')">5</button>
+      <button class="pad-btn" onclick="padPress('6')">6</button>
+      <button class="pad-btn" onclick="padPress('7')">7</button>
+      <button class="pad-btn" onclick="padPress('8')">8</button>
+      <button class="pad-btn" onclick="padPress('9')">9</button>
+      <button class="pad-btn zero" onclick="padPress('0')">0</button>
+      <button class="pad-btn del" onclick="padDel()">⌫</button>
+    </div>
+
+    <button class="pin-submit" id="pinSubmit" onclick="submitPin()" disabled>Kirish</button>
+  </div>
+</div>
+
+<!-- Main App -->
+<div id="hero">
+  <h1>🔍 Real IP Finder</h1>
+  <p class="subtitle">Cloudflare, AWS va boshqa himoyalar orqasidagi haqiqiy server IP manzilini aniqlang</p>
+  <div class="search-box">
+    <input type="text" id="urlInput" placeholder="example.com yoki https://example.com" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <button id="searchBtn" onclick="lookup()">Tekshir</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="loader" id="loader">
+    <div class="radar-wrap">
+      <div class="radar-ring"></div>
+      <div class="radar-ring"></div>
+      <div class="radar-ring"></div>
+      <div class="radar-core"></div>
+    </div>
+    <div class="loader-title">Tahlil qilinmoqda<span class="dots"></span></div>
+    <div class="scan-steps" id="scanSteps"></div>
+  </div>
+  <div class="results" id="results"></div>
+</div>
+
+<script>
+/* ============================================================
+   NETWORK CANVAS ANIMATION
+   ============================================================ */
+(function () {
+  const canvas = document.getElementById('netCanvas');
+  const ctx    = canvas.getContext('2d');
+  let W, H, nodes, pings;
+  const NODE_COUNT   = 50;
+  const MAX_DIST     = 150;
+  const PING_INTERVAL = 900;
+
+  function resize() {
+    W = canvas.width  = window.innerWidth;
+    H = canvas.height = window.innerHeight;
+  }
+  function randNode() {
+    return {
+      x: Math.random() * W, y: Math.random() * H,
+      vx: (Math.random() - 0.5) * 0.3,
+      vy: (Math.random() - 0.5) * 0.3,
+      size: 1.5 + Math.random() * 2.5,
+      hub: Math.random() < 0.15,
+      phase: Math.random() * Math.PI * 2,
+    };
+  }
+  function init() { resize(); nodes = Array.from({ length: NODE_COUNT }, randNode); pings = []; }
+
+  function getEdges() {
+    const e = [];
+    for (let i = 0; i < nodes.length; i++)
+      for (let j = i + 1; j < nodes.length; j++) {
+        const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+        const d = Math.sqrt(dx*dx + dy*dy);
+        if (d < MAX_DIST) e.push({ a: i, b: j, d });
+      }
+    return e;
+  }
+
+  let lastPing = 0;
+  function spawnPing(edges) {
+    if (!edges.length) return;
+    const edge = edges[Math.floor(Math.random() * edges.length)];
+    const [from, to] = Math.random() < 0.5 ? [edge.a, edge.b] : [edge.b, edge.a];
+    pings.push({ from, to, t: 0, speed: 0.006 + Math.random() * 0.008 });
+  }
+
+  function draw(ts) {
+    ctx.clearRect(0, 0, W, H);
+    nodes.forEach(n => {
+      n.x += n.vx; n.y += n.vy;
+      if (n.x < -10) n.x = W + 10; if (n.x > W + 10) n.x = -10;
+      if (n.y < -10) n.y = H + 10; if (n.y > H + 10) n.y = -10;
+      n.phase += 0.025;
+    });
+
+    const edges = getEdges();
+    if (ts - lastPing > PING_INTERVAL) { spawnPing(edges); lastPing = ts; }
+
+    edges.forEach(({ a, b, d }) => {
+      ctx.beginPath();
+      ctx.moveTo(nodes[a].x, nodes[a].y);
+      ctx.lineTo(nodes[b].x, nodes[b].y);
+      ctx.strokeStyle = `rgba(88,166,255,${(1 - d / MAX_DIST) * 0.2})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    nodes.forEach(n => {
+      const r = n.size * (n.hub ? 1 + 0.35 * Math.sin(n.phase) : 1);
+      if (n.hub) {
+        ctx.beginPath(); ctx.arc(n.x, n.y, r * 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(88,166,255,0.04)'; ctx.fill();
+      }
+      ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
+      ctx.fillStyle = n.hub ? 'rgba(88,166,255,0.85)' : 'rgba(88,166,255,0.5)';
+      ctx.fill();
+    });
+
+    pings = pings.filter(p => {
+      p.t += p.speed;
+      if (p.t >= 1) return false;
+      const from = nodes[p.from], to = nodes[p.to];
+      const px = from.x + (to.x - from.x) * p.t;
+      const py = from.y + (to.y - from.y) * p.t;
+      const tx = from.x + (to.x - from.x) * Math.max(0, p.t - 0.12);
+      const ty = from.y + (to.y - from.y) * Math.max(0, p.t - 0.12);
+      const grad = ctx.createLinearGradient(tx, ty, px, py);
+      grad.addColorStop(0, 'rgba(63,185,80,0)');
+      grad.addColorStop(1, 'rgba(63,185,80,0.85)');
+      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py);
+      ctx.strokeStyle = grad; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2);
+      ctx.fillStyle = '#3fb950';
+      ctx.shadowColor = '#3fb950'; ctx.shadowBlur = 8;
+      ctx.fill(); ctx.shadowBlur = 0;
+      return true;
+    });
+
+    requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', resize);
+  init();
+  requestAnimationFrame(draw);
+})();
+
+/* ============================================================
+   PIN AUTH
+   ============================================================ */
+let pinValue = '';
+let authToken = sessionStorage.getItem('auth_token') || '';
+
+// Check if already authenticated
+if (authToken) {
+  document.getElementById('pinScreen').classList.add('hidden');
+}
+
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('d' + i).classList.toggle('filled', i < pinValue.length);
+  }
+  document.getElementById('pinSubmit').disabled = pinValue.length < 4;
+}
+
+function padPress(digit) {
+  if (pinValue.length >= 4) return;
+  pinValue += digit;
+  updateDots();
+  document.getElementById('pinError').textContent = '';
+  if (pinValue.length === 4) submitPin();
+}
+
+function padDel() {
+  pinValue = pinValue.slice(0, -1);
+  updateDots();
+  document.getElementById('pinError').textContent = '';
+}
+
+// Keyboard support for PIN
+document.addEventListener('keydown', e => {
+  if (document.getElementById('pinScreen').classList.contains('hidden')) return;
+  if (e.key >= '0' && e.key <= '9') padPress(e.key);
+  else if (e.key === 'Backspace') padDel();
+  else if (e.key === 'Enter' && pinValue.length === 4) submitPin();
+});
+
+async function submitPin() {
+  if (pinValue.length < 4) return;
+  const btn = document.getElementById('pinSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Tekshirilmoqda...';
+
+  try {
+    const res  = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin: pinValue })
+    });
+    const data = await res.json();
+
+    if (res.ok && data.token) {
+      authToken = data.token;
+      sessionStorage.setItem('auth_token', authToken);
+      // Fade out pin screen
+      const ps = document.getElementById('pinScreen');
+      ps.style.transition = 'opacity 0.4s';
+      ps.style.opacity = '0';
+      setTimeout(() => ps.classList.add('hidden'), 400);
+    } else {
+      showPinError(data.error || "Noto'g'ri PIN");
+    }
+  } catch {
+    showPinError('Server bilan bog\'lanib bo\'lmadi');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Kirish';
+  }
+}
+
+function showPinError(msg) {
+  const input = document.querySelector('.pin-dots');
+  const err   = document.getElementById('pinError');
+  err.textContent = msg;
+  pinValue = '';
+  updateDots();
+  // Shake the dots
+  document.querySelectorAll('.pin-dot').forEach(d => {
+    d.style.borderColor = '#f85149';
+    d.style.background  = 'transparent';
+  });
+  setTimeout(() => {
+    document.querySelectorAll('.pin-dot').forEach(d => {
+      d.style.borderColor = '';
+      d.style.background  = '';
+    });
+  }, 600);
+}
+
+/* ============================================================
+   MAIN APP
+   ============================================================ */
+const STEPS = [
+  { icon: '🌐', text: 'DNS A/AAAA yozuvlari',           delay: 0 },
+  { icon: '🛡️', text: 'Cloudflare / AWS tekshiruvi',    delay: 500 },
+  { icon: '📧', text: 'MX — pochta serverlari',          delay: 1100 },
+  { icon: '📋', text: 'SPF / TXT / DMARC',              delay: 1800 },
+  { icon: '🗄️', text: 'NS / SOA / SRV yozuvlari',      delay: 2600 },
+  { icon: '🔐', text: 'SSL sertifikat (crt.sh)',         delay: 3600 },
+  { icon: '👁️', text: 'AlienVault OTX passiv DNS',      delay: 4900 },
+  { icon: '📡', text: "URLScan.io ma'lumotlar bazasi",   delay: 6200 },
+  { icon: '🎯', text: 'HackerTarget + RapidDNS',        delay: 7400 },
+  { icon: '⚡', text: 'Subdomain brute-force (80+)',     delay: 8800 },
+  { icon: '📖', text: 'ViewDNS IP tarixi',               delay: 10200 },
+  { icon: '🔦', text: 'Shodan InternetDB',               delay: 11600 },
+  { icon: '🌍', text: 'IP Geolokatsiya',                 delay: 12800 },
+];
+
+let stepTimers = [], dotTimer = null, stepEls = [];
+
+function startLoader() {
+  const container = document.getElementById('scanSteps');
+  container.innerHTML = '';
+  stepEls = [];
+  for (const s of STEPS) {
+    const el = document.createElement('div');
+    el.className = 'step-item';
+    el.innerHTML = `<span class="step-icon">${s.icon}</span><span>${s.text}</span>`;
+    container.appendChild(el);
+    stepEls.push(el);
+  }
+  stepTimers = [];
+  STEPS.forEach((s, i) => {
+    stepTimers.push(setTimeout(() => {
+      stepEls[i].classList.add('visible', 'active');
+      stepEls[i].innerHTML += `<span class="step-spinner"></span>`;
+      if (i > 0) markDone(i - 1);
+    }, s.delay));
+  });
+  let dotCount = 0;
+  dotTimer = setInterval(() => {
+    dotCount = (dotCount % 3) + 1;
+    const el = document.querySelector('.dots');
+    if (el) el.textContent = '.'.repeat(dotCount);
+  }, 450);
+}
+
+function markDone(i) {
+  if (!stepEls[i]) return;
+  stepEls[i].classList.remove('active');
+  stepEls[i].classList.add('done');
+  const spinner = stepEls[i].querySelector('.step-spinner');
+  if (spinner) spinner.outerHTML = '<span class="step-check">✓</span>';
+}
+
+function stopLoader() {
+  stepTimers.forEach(clearTimeout); stepTimers = [];
+  clearInterval(dotTimer);
+  stepEls.forEach((_, i) => markDone(i));
+}
+
+document.getElementById('urlInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') lookup();
+});
+
+async function lookup() {
+  const url = document.getElementById('urlInput').value.trim();
+  if (!url) return;
+
+  const btn     = document.getElementById('searchBtn');
+  const loader  = document.getElementById('loader');
+  const results = document.getElementById('results');
+  const hero    = document.getElementById('hero');
+
+  btn.disabled = true;
+  loader.classList.add('active');
+  results.classList.remove('active');
+  results.innerHTML = '';
+  startLoader();
+
+  hero.style.minHeight = '22vh';
+  hero.style.paddingTop = '28px';
+  hero.style.paddingBottom = '20px';
+  setTimeout(() => loader.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+
+  try {
+    const res = await fetch('/api/lookup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-auth-token': authToken
+      },
+      body: JSON.stringify({ url })
+    });
+
+    if (res.status === 401) {
+      // Token expired or invalid — force re-login
+      sessionStorage.removeItem('auth_token');
+      authToken = '';
+      document.getElementById('pinScreen').classList.remove('hidden');
+      document.getElementById('pinScreen').style.opacity = '1';
+      stopLoader();
+      loader.classList.remove('active');
+      btn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    stopLoader();
+    setTimeout(() => {
+      loader.classList.remove('active');
+      renderResults(data);
+    }, 600);
+  } catch (err) {
+    stopLoader();
+    loader.classList.remove('active');
+    results.innerHTML = `<div class="alert alert-error">Xato: ${esc(err.message)}</div>`;
+    results.classList.add('active');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function flagEmoji(code) {
+  if (!code || code.length !== 2) return '🌐';
+  const o = 0x1F1E6 - 65;
+  return String.fromCodePoint(code.toUpperCase().charCodeAt(0) + o, code.toUpperCase().charCodeAt(1) + o);
+}
+
+function geoLine(geo) {
+  if (!geo) return '';
+  const flag = flagEmoji(geo.countryCode);
+  const loc  = [geo.city, geo.country].filter(Boolean).join(', ');
+  return `<div class="ip-geo">
+    <span class="ip-geo-country">${flag} ${esc(loc || '—')}</span>
+    <span class="ip-geo-org">${esc(geo.org || geo.isp || '')}</span>
+  </div>`;
+}
+
+function shodanLine(shodanData, ip) {
+  const s = shodanData && shodanData[ip];
+  if (!s) return '';
+  const ports = (s.ports || []).slice(0, 12).map(p => `<span class="shodan-port">${p}</span>`).join('');
+  const hosts = (s.hostnames || []).slice(0, 4).map(h => `<span class="shodan-host">${esc(h)}</span>`).join('');
+  const vulns = (s.vulns || []).slice(0, 3).map(v => `<span class="shodan-vuln">${esc(v)}</span>`).join('');
+  if (!ports && !hosts && !vulns) return '';
+  return `<div class="shodan-box">${ports}${hosts}${vulns}</div>`;
+}
+
+function renderResults(data) {
+  const results = document.getElementById('results');
+  let html = '';
+  if (data.error) html += `<div class="alert alert-error">Xato: ${esc(data.error)}</div>`;
+
+  const badgeHtml = data.protection.cloudflare
+    ? `<span class="badge badge-cf">☁️ Cloudflare</span>`
+    : data.protection.aws
+    ? `<span class="badge badge-aws">☁️ AWS</span>`
+    : `<span class="badge badge-clean">✅ To'g'ridan-to'g'ri</span>`;
+
+  html += `<div class="card">
+    <div class="card-title">🌐 Domain</div>
+    <div class="domain-name">${esc(data.domain)} ${badgeHtml}</div>
+  </div>`;
+
+  html += `<div class="card"><div class="card-title">📡 Asosiy IP (DNS A/AAAA)</div>`;
+  if (!data.mainIPs.length) {
+    html += `<span class="no-results">IP topilmadi</span>`;
+  } else {
+    html += `<ul class="ip-list">`;
+    for (const ip of data.mainIPs) {
+      const geo  = data.geoData && data.geoData[ip];
+      const flag = geo ? flagEmoji(geo.countryCode) : '🌐';
+      const tag  = data.protection.cloudflare
+        ? `<span class="ip-tag tag-cf">Cloudflare</span>`
+        : data.protection.aws
+        ? `<span class="ip-tag tag-aws">AWS</span>`
+        : `<span class="ip-tag tag-real">Real</span>`;
+      html += `<li>
+        <span class="ip-flag">${flag}</span>
+        <span class="ip-addr">${esc(ip)}</span>
+        ${geoLine(geo)} ${tag}
+        <span class="ip-source">Asosiy DNS</span>
+      </li>`;
+    }
+    html += `</ul>`;
+  }
+  html += `</div>`;
+
+  if (data.protection.cloudflare || data.protection.aws) {
+    html += `<div class="alert alert-warning">
+      Ushbu sayt <strong>${esc(data.protection.name)}</strong> himoyasi orqasida ishlaydi.
+      Yuqoridagi IP manzillar proxy — haqiqiy server IP emas.
+    </div>`;
+
+    html += `<div class="card"><div class="card-title">🎯 Haqiqiy IP Izlash Natijalari</div>`;
+    const realCandidates  = (data.realIPCandidates || []).filter(c => c.likely);
+    const otherCandidates = (data.realIPCandidates || []).filter(c => !c.likely);
+
+    if (!data.realIPCandidates.length) {
+      html += `<span class="no-results">Haqiqiy IP topilmadi. Server yaxshi himoyalangan.</span>`;
+    } else {
+      if (realCandidates.length) {
+        html += `<div style="color:#3fb950;font-size:0.78rem;margin-bottom:10px;font-weight:700;">
+          ✅ Ehtimoliy haqiqiy IP manzillar (${realCandidates.length} ta):
+        </div><ul class="ip-list">`;
+        for (const c of realCandidates) {
+          const geo = data.geoData && data.geoData[c.ip];
+          const sources = c.sources ? c.sources : [c.source];
+          html += `<li>
+            <span class="ip-flag">${geo ? flagEmoji(geo.countryCode) : '🌐'}</span>
+            <span class="ip-addr highlight">${esc(c.ip)}</span>
+            ${geoLine(geo)}
+            <span class="ip-tag tag-real">Real</span>
+            <span class="method-badge">${esc(c.method || '')}</span>
+            <span class="ip-source">${sources.map(s => esc(s)).join(' · ')}</span>
+            ${shodanLine(data.shodanData, c.ip)}
+          </li>`;
+        }
+        html += `</ul>`;
+      }
+      if (otherCandidates.length) {
+        html += `<div style="color:#8b949e;font-size:0.78rem;margin:12px 0 8px;font-weight:700;">
+          🔸 Boshqa topilgan IP (proxy/CDN, ${otherCandidates.length} ta):
+        </div><ul class="ip-list">`;
+        for (const c of otherCandidates) {
+          const geo = data.geoData && data.geoData[c.ip];
+          const tag = c.isCF
+            ? `<span class="ip-tag tag-cf">Cloudflare</span>`
+            : `<span class="ip-tag tag-aws">AWS/CDN</span>`;
+          const sources = c.sources ? c.sources : [c.source];
+          html += `<li>
+            <span class="ip-flag">${geo ? flagEmoji(geo.countryCode) : '🌐'}</span>
+            <span class="ip-addr">${esc(c.ip)}</span>
+            ${geoLine(geo)} ${tag}
+            <span class="method-badge">${esc(c.method || '')}</span>
+            <span class="ip-source">${sources.map(s => esc(s)).join(' · ')}</span>
+          </li>`;
+        }
+        html += `</ul>`;
+      }
+    }
+    html += `</div>`;
+  }
+
+  if (Object.keys(data.headers).length) {
+    html += `<div class="card"><div class="card-title">📋 HTTP Sarlavhalar</div>`;
+    for (const [k, v] of Object.entries(data.headers)) {
+      html += `<div class="header-row">
+        <span class="header-key">${esc(k)}</span>
+        <span class="header-val">${esc(v)}</span>
+      </div>`;
+    }
+    html += `</div>`;
+  }
+
+  html += `<div class="card">
+    <div class="card-title">🔬 Qo'llanilgan metodlar</div>
+    <div class="methods-grid">
+      <div class="method-card"><strong>DNS A/AAAA</strong>Asosiy IP manzil</div>
+      <div class="method-card"><strong>MX yozuvlari</strong>Pochta serveri IP</div>
+      <div class="method-card"><strong>SPF / TXT</strong>ip4: ko'rinishidagi IP</div>
+      <div class="method-card"><strong>NS / SOA</strong>Name server IP lari</div>
+      <div class="method-card"><strong>SRV yozuvlari</strong>SIP, SMTP, IMAP</div>
+      <div class="method-card"><strong>DMARC</strong>Raporlash domeni</div>
+      <div class="method-card"><strong>crt.sh (SSL)</strong>Sertifikat shaffofligi</div>
+      <div class="method-card"><strong>AlienVault OTX</strong>Passiv DNS tarixi</div>
+      <div class="method-card"><strong>URLScan.io</strong>Skan bazasi</div>
+      <div class="method-card"><strong>HackerTarget</strong>Subdomain API</div>
+      <div class="method-card"><strong>RapidDNS</strong>Subdomain qidirish</div>
+      <div class="method-card"><strong>ViewDNS tarixi</strong>IP o'zgarish tarixi</div>
+      <div class="method-card"><strong>Brute-force (80+)</strong>Subdomain skaneri</div>
+      <div class="method-card"><strong>Shodan InternetDB</strong>Portlar, hostnamlar</div>
+      <div class="method-card"><strong>ip-api.com</strong>Geo, ISP</div>
+    </div>
+  </div>`;
+
+  results.innerHTML = html;
+  results.classList.add('active');
+  setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+}
+
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>

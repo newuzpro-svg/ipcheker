@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: real-ip-finder
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: PIN_CODE
+        sync: false        # Set manually in Render dashboard: 8520
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
