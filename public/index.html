@@ -19,7 +19,9 @@
     #netCanvas {
       position: fixed;
       top: 0; left: 0;
-      width: 100%; height: 100%;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
       z-index: 0;
       pointer-events: none;
     }
@@ -508,8 +510,8 @@
   const PING_INTERVAL = 900;
 
   function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
+    W = canvas.width  = canvas.clientWidth  || window.innerWidth;
+    H = canvas.height = canvas.clientHeight || window.innerHeight;
   }
   function randNode() {
     return {
