@@ -477,5 +477,29 @@ app.post('/api/lookup', requireAuth, async (req, res) => {
   res.json(result);
 });
 
+/* ============================================================
+   PING — keep-alive endpoint (no auth required)
+   ============================================================ */
+app.get('/ping', (req, res) => res.json({ status: 'ok', ts: Date.now() }));
+
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running at http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
+
+  // ---- Self-ping to prevent Render.com free-tier sleep ----
+  const SELF_URL = process.env.RENDER_EXTERNAL_URL;
+  if (SELF_URL) {
+    const PING_EVERY = 4 * 60 * 1000; // 4 minutes
+    setInterval(async () => {
+      try {
+        await axios.get(`${SELF_URL}/ping`, { timeout: 10000 });
+        console.log(`[keep-alive] pinged ${SELF_URL}/ping`);
+      } catch (e) {
+        console.error('[keep-alive] ping failed:', e.message);
+      }
+    }, PING_EVERY);
+    console.log(`[keep-alive] Self-ping enabled → ${SELF_URL}/ping every 4 min`);
+  } else {
+    console.log('[keep-alive] RENDER_EXTERNAL_URL not set — self-ping disabled (local mode)');
+  }
+});

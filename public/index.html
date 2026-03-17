@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Real IP Finder</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,6 +26,26 @@
       z-index: 0;
       pointer-events: none;
     }
+
+    /* ===== LANGUAGE TOGGLE ===== */
+    .lang-toggle {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      z-index: 200;
+      background: #21262d;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 6px 14px;
+      color: #c9d1d9;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: 0.5px;
+    }
+    .lang-toggle:hover { background: #2d333b; border-color: #58a6ff60; color: #58a6ff; }
 
     /* ===== PIN SCREEN ===== */
     #pinScreen {
@@ -56,82 +77,36 @@
       to   { opacity: 1; transform: scale(1) translateY(0); }
     }
 
-    .pin-icon {
-      font-size: 2.8rem;
-      margin-bottom: 16px;
-      filter: drop-shadow(0 0 16px #58a6ff60);
-    }
-    .pin-title {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: #e6edf3;
-      margin-bottom: 6px;
-    }
-    .pin-subtitle {
-      font-size: 0.85rem;
-      color: #6e7681;
-      margin-bottom: 28px;
-    }
+    .pin-icon { font-size: 2.8rem; margin-bottom: 16px; filter: drop-shadow(0 0 16px #58a6ff60); }
+    .pin-title { font-size: 1.3rem; font-weight: 700; color: #e6edf3; margin-bottom: 6px; }
+    .pin-subtitle { font-size: 0.85rem; color: #6e7681; margin-bottom: 28px; }
 
-    .pin-input-wrap {
-      position: relative;
-      margin-bottom: 16px;
-    }
+    .pin-input-wrap { position: relative; margin-bottom: 16px; }
     .pin-input {
-      width: 100%;
-      padding: 14px 18px;
-      font-size: 1.5rem;
-      letter-spacing: 0.5em;
-      text-align: center;
-      background: #0d1117;
-      border: 1.5px solid #30363d;
-      border-radius: 12px;
-      color: #e6edf3;
-      outline: none;
+      width: 100%; padding: 14px 18px;
+      font-size: 1.5rem; letter-spacing: 0.5em; text-align: center;
+      background: #0d1117; border: 1.5px solid #30363d; border-radius: 12px;
+      color: #e6edf3; outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
       -webkit-text-security: disc;
     }
-    .pin-input:focus {
-      border-color: #58a6ff;
-      box-shadow: 0 0 0 3px #58a6ff20;
-    }
-    .pin-input.error {
-      border-color: #f85149;
-      box-shadow: 0 0 0 3px #f8514920;
-      animation: shake 0.35s ease;
-    }
+    .pin-input:focus { border-color: #58a6ff; box-shadow: 0 0 0 3px #58a6ff20; }
+    .pin-input.error { border-color: #f85149; box-shadow: 0 0 0 3px #f8514920; animation: shake 0.35s ease; }
     @keyframes shake {
       0%,100% { transform: translateX(0); }
       20%      { transform: translateX(-8px); }
       60%      { transform: translateX(8px); }
     }
 
-    .pin-error {
-      font-size: 0.82rem;
-      color: #f85149;
-      min-height: 20px;
-      margin-bottom: 12px;
-    }
+    .pin-error { font-size: 0.82rem; color: #f85149; min-height: 20px; margin-bottom: 12px; }
 
-    /* Number pad */
-    .pin-pad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 16px;
-    }
+    .pin-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
     .pad-btn {
-      padding: 16px 10px;
-      font-size: 1.2rem;
-      font-weight: 600;
-      background: #21262d;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      color: #c9d1d9;
-      cursor: pointer;
+      padding: 16px 10px; font-size: 1.2rem; font-weight: 600;
+      background: #21262d; border: 1px solid #30363d; border-radius: 12px;
+      color: #c9d1d9; cursor: pointer;
       transition: background 0.15s, transform 0.1s, border-color 0.15s;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
+      -webkit-tap-highlight-color: transparent; user-select: none;
     }
     .pad-btn:hover  { background: #2d333b; border-color: #58a6ff40; }
     .pad-btn:active { background: #58a6ff22; transform: scale(0.94); border-color: #58a6ff; }
@@ -140,111 +115,54 @@
     .pad-btn.del:hover  { background: #f8514920; color: #f85149; border-color: #f8514940; }
 
     .pin-submit {
-      width: 100%;
-      padding: 14px;
-      font-size: 1rem;
-      font-weight: 700;
+      width: 100%; padding: 14px; font-size: 1rem; font-weight: 700;
       background: linear-gradient(135deg, #238636, #2ea043);
-      border: none;
-      border-radius: 12px;
-      color: #fff;
-      cursor: pointer;
-      transition: all 0.2s;
-      -webkit-tap-highlight-color: transparent;
+      border: none; border-radius: 12px; color: #fff; cursor: pointer;
+      transition: all 0.2s; -webkit-tap-highlight-color: transparent;
     }
     .pin-submit:hover  { background: linear-gradient(135deg, #2ea043, #3fb950); box-shadow: 0 4px 16px #23863650; }
     .pin-submit:active { transform: scale(0.97); }
     .pin-submit:disabled { background: #21262d; color: #484f58; cursor: not-allowed; }
 
-    /* PIN dots indicator */
-    .pin-dots {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-bottom: 20px;
-    }
+    .pin-dots { display: flex; justify-content: center; gap: 10px; margin-bottom: 20px; }
     .pin-dot {
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      border: 2px solid #30363d;
-      background: transparent;
-      transition: all 0.2s;
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid #30363d; background: transparent; transition: all 0.2s;
     }
-    .pin-dot.filled {
-      background: #58a6ff;
-      border-color: #58a6ff;
-      box-shadow: 0 0 8px #58a6ff80;
-    }
+    .pin-dot.filled { background: #58a6ff; border-color: #58a6ff; box-shadow: 0 0 8px #58a6ff80; }
 
     /* ===== HERO ===== */
     #hero {
-      position: relative;
-      z-index: 1;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 20px;
-      text-align: center;
+      position: relative; z-index: 1;
+      min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 40px 20px; text-align: center;
       transition: min-height 0.5s ease, padding 0.5s ease;
     }
 
-    h1 {
-      font-size: clamp(1.6rem, 5vw, 2.4rem);
-      color: #58a6ff;
-      margin-bottom: 10px;
-      letter-spacing: -0.5px;
-      text-shadow: 0 0 40px #58a6ff40;
-    }
-    .subtitle {
-      color: #8b949e;
-      margin-bottom: 36px;
-      font-size: clamp(0.82rem, 2.5vw, 0.95rem);
-      max-width: 520px;
-    }
+    h1 { font-size: clamp(1.6rem, 5vw, 2.4rem); color: #58a6ff; margin-bottom: 10px; letter-spacing: -0.5px; text-shadow: 0 0 40px #58a6ff40; }
+    .subtitle { color: #8b949e; margin-bottom: 36px; font-size: clamp(0.82rem, 2.5vw, 0.95rem); max-width: 520px; }
 
     /* ===== SEARCH BOX ===== */
     .search-box {
-      display: flex;
-      gap: 0;
-      width: 100%;
-      max-width: 660px;
-      background: #161b22cc;
-      border: 1px solid #30363d;
-      border-radius: 14px;
-      padding: 5px;
-      backdrop-filter: blur(16px);
+      display: flex; gap: 0; width: 100%; max-width: 660px;
+      background: #161b22cc; border: 1px solid #30363d; border-radius: 14px;
+      padding: 5px; backdrop-filter: blur(16px);
       box-shadow: 0 8px 32px #00000060, 0 0 0 1px #58a6ff0a;
       transition: box-shadow 0.3s, border-color 0.3s;
     }
-    .search-box:focus-within {
-      border-color: #58a6ff55;
-      box-shadow: 0 8px 40px #58a6ff18, 0 0 0 1px #58a6ff25;
-    }
+    .search-box:focus-within { border-color: #58a6ff55; box-shadow: 0 8px 40px #58a6ff18, 0 0 0 1px #58a6ff25; }
     #urlInput {
-      flex: 1;
-      padding: 13px 16px;
-      background: transparent;
-      border: none;
-      color: #c9d1d9;
-      font-size: 1rem; /* >= 16px prevents iOS zoom */
-      outline: none;
-      min-width: 0;
+      flex: 1; padding: 13px 16px; background: transparent; border: none;
+      color: #c9d1d9; font-size: 1rem; outline: none; min-width: 0;
     }
     #urlInput::placeholder { color: #484f58; }
     #searchBtn {
       padding: 13px 22px;
       background: linear-gradient(135deg, #238636, #2ea043);
-      border: none;
-      border-radius: 10px;
-      color: #fff;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-      flex-shrink: 0;
+      border: none; border-radius: 10px; color: #fff;
+      font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
       -webkit-tap-highlight-color: transparent;
     }
     #searchBtn:hover    { background: linear-gradient(135deg, #2ea043, #3fb950); transform: translateY(-1px); box-shadow: 0 4px 16px #23863650; }
@@ -252,13 +170,7 @@
     #searchBtn:disabled { background: #21262d; color: #484f58; cursor: not-allowed; transform: none; box-shadow: none; }
 
     /* ===== MAIN CONTENT ===== */
-    .main {
-      position: relative;
-      z-index: 1;
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 16px 60px;
-    }
+    .main { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 16px 60px; }
 
     /* ===== LOADER ===== */
     @keyframes cardIn {
@@ -277,10 +189,7 @@
     .radar-ring:nth-child(1) { inset: 34px; animation-delay: 0s; }
     .radar-ring:nth-child(2) { inset: 17px; animation-delay: 0.7s; }
     .radar-ring:nth-child(3) { inset: 0;    animation-delay: 1.4s; }
-    @keyframes radarPulse {
-      0%   { transform: scale(0.4); opacity: 0.9; }
-      100% { transform: scale(1);   opacity: 0; }
-    }
+    @keyframes radarPulse { 0% { transform: scale(0.4); opacity: 0.9; } 100% { transform: scale(1); opacity: 0; } }
     .radar-core {
       position: absolute; inset: 37px;
       background: #58a6ff; border-radius: 50%;
@@ -294,14 +203,7 @@
     .loader-title { font-size: 1.05rem; color: #c9d1d9; font-weight: 600; margin-bottom: 20px; }
     .loader-title .dots { color: #58a6ff; }
 
-    .scan-steps {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 7px;
-      max-width: 540px;
-      margin: 0 auto;
-      text-align: left;
-    }
+    .scan-steps { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; max-width: 540px; margin: 0 auto; text-align: left; }
     @media(max-width: 500px) { .scan-steps { grid-template-columns: 1fr; } }
 
     .step-item {
@@ -310,84 +212,53 @@
       background: #161b22cc; border: 1px solid #21262d;
       font-size: 0.78rem; color: #484f58;
       opacity: 0; transform: translateY(6px);
-      transition: opacity 0.35s ease, transform 0.35s ease,
-                  border-color 0.3s, background 0.3s, color 0.3s;
+      transition: opacity 0.35s ease, transform 0.35s ease, border-color 0.3s, background 0.3s, color 0.3s;
       backdrop-filter: blur(8px);
     }
     .step-item.visible { opacity: 1; transform: translateY(0); color: #8b949e; }
     .step-item.active  { border-color: #58a6ff50; background: #58a6ff12; color: #58a6ff; }
     .step-item.done    { border-color: #23863650; background: #23863612; color: #3fb950; }
     .step-icon { font-size: 0.95rem; flex-shrink: 0; }
-    .step-spinner {
-      margin-left: auto; width: 11px; height: 11px;
-      border: 2px solid #30363d; border-top-color: #58a6ff;
-      border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
-    }
+    .step-spinner { margin-left: auto; width: 11px; height: 11px; border: 2px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
     .step-check { margin-left: auto; color: #3fb950; font-size: 0.85rem; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ===== CARDS ===== */
-    @keyframes shimmerLine {
-      0%   { left: -60%; }
-      100% { left: 120%; }
-    }
+    @keyframes shimmerLine { 0% { left: -60%; } 100% { left: 120%; } }
     .results { display: none; }
     .results.active { display: block; animation: cardIn 0.4s ease; }
 
     .card {
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 12px;
-      padding: 16px 18px;
-      margin-bottom: 14px;
+      background: #161b22; border: 1px solid #30363d; border-radius: 12px;
+      padding: 16px 18px; margin-bottom: 14px;
       position: relative; overflow: hidden;
       transition: border-color 0.3s, box-shadow 0.3s;
     }
     .card:hover { border-color: #58a6ff35; box-shadow: 0 0 24px #58a6ff0c; }
     .card::after {
-      content: '';
-      position: absolute;
-      top: 0; left: -60%;
+      content: ''; position: absolute; top: 0; left: -60%;
       width: 40%; height: 1px;
       background: linear-gradient(90deg, transparent, #58a6ff60, transparent);
       animation: shimmerLine 4s linear infinite;
     }
-    .card-title {
-      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px;
-      color: #8b949e; margin-bottom: 12px; font-weight: 700;
-      display: flex; align-items: center; gap: 6px;
-    }
+    .card-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 1px; color: #8b949e; margin-bottom: 12px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
     .domain-name { font-size: clamp(1.1rem, 4vw, 1.4rem); font-weight: 700; color: #e6edf3; word-break: break-all; }
 
-    .badge {
-      display: inline-flex; align-items: center; gap: 4px;
-      padding: 3px 9px; border-radius: 20px;
-      font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle;
-    }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; margin-left: 8px; vertical-align: middle; }
     .badge-cf    { background: #f6821015; color: #f68210; border: 1px solid #f6821045; }
     .badge-aws   { background: #ff990015; color: #ff9900; border: 1px solid #ff990045; }
     .badge-clean { background: #23863615; color: #2ea043; border: 1px solid #23863645; }
 
     .ip-list { list-style: none; }
-    .ip-list li {
-      display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
-      padding: 9px 0; border-bottom: 1px solid #21262d;
-    }
+    .ip-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; padding: 9px 0; border-bottom: 1px solid #21262d; }
     .ip-list li:last-child { border-bottom: none; }
     .ip-flag  { font-size: 1.1rem; flex-shrink: 0; }
-    .ip-addr  {
-      font-size: clamp(0.9rem, 3vw, 1.05rem); color: #79c0ff; font-weight: 700;
-      font-family: 'Courier New', monospace; min-width: 130px; word-break: break-all;
-    }
+    .ip-addr  { font-size: clamp(0.9rem, 3vw, 1.05rem); color: #79c0ff; font-weight: 700; font-family: 'Courier New', monospace; min-width: 130px; word-break: break-all; }
     .ip-addr.highlight { color: #3fb950; }
     .ip-geo   { font-size: 0.78rem; color: #8b949e; display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 100px; }
     .ip-geo-country { color: #c9d1d9; font-weight: 500; }
     .ip-geo-org     { color: #6e7681; font-size: 0.72rem; }
-    .ip-source {
-      font-size: 0.72rem; color: #6e7681; font-family: monospace;
-      flex-basis: 100%; padding-left: 26px; margin-top: -4px;
-      word-break: break-all;
-    }
+    .ip-source { font-size: 0.72rem; color: #6e7681; font-family: monospace; flex-basis: 100%; padding-left: 26px; margin-top: -4px; word-break: break-all; }
     .ip-tag { font-size: 0.65rem; padding: 2px 7px; border-radius: 4px; font-weight: 700; flex-shrink: 0; }
     .tag-cf   { background: #f6821020; color: #f68210; }
     .tag-aws  { background: #ff990020; color: #ff9900; }
@@ -399,11 +270,7 @@
     .shodan-host { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #1a2420; color: #4ade80; border: 1px solid #2a3e30; font-family: monospace; }
     .shodan-vuln { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; background: #2a1a1a; color: #f87171; border: 1px solid #3e2222; font-family: monospace; }
 
-    .header-row {
-      display: flex; gap: 8px; padding: 7px 0;
-      border-bottom: 1px solid #21262d; font-size: 0.82rem;
-      flex-wrap: wrap;
-    }
+    .header-row { display: flex; gap: 8px; padding: 7px 0; border-bottom: 1px solid #21262d; font-size: 0.82rem; flex-wrap: wrap; }
     .header-row:last-child { border-bottom: none; }
     .header-key { color: #f78166; font-family: monospace; min-width: 160px; flex-shrink: 0; }
     .header-val { color: #a5d6ff; font-family: monospace; word-break: break-all; flex: 1; }
@@ -415,12 +282,49 @@
     .no-results    { color: #484f58; font-style: italic; font-size: 0.88rem; }
 
     .methods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
-    .method-card {
-      background: #0d1117; border: 1px solid #21262d;
-      border-radius: 8px; padding: 9px 12px;
-      font-size: 0.78rem; color: #8b949e; line-height: 1.5;
-    }
+    .method-card { background: #0d1117; border: 1px solid #21262d; border-radius: 8px; padding: 9px 12px; font-size: 0.78rem; color: #8b949e; line-height: 1.5; }
     .method-card strong { color: #c9d1d9; display: block; margin-bottom: 2px; }
+
+    /* ===== PDF BUTTON ===== */
+    .pdf-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px;
+      background: linear-gradient(135deg, #1f6feb, #388bfd);
+      border: none; border-radius: 10px; color: #fff;
+      font-size: 0.92rem; font-weight: 700; cursor: pointer;
+      transition: all 0.2s; margin-bottom: 16px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .pdf-btn:hover  { transform: translateY(-1px); box-shadow: 0 4px 20px #1f6feb60; }
+    .pdf-btn:active { transform: translateY(0); }
+
+    /* ===== PRINT STYLES (Save as PDF) ===== */
+    @media print {
+      body { background: white !important; color: black !important; }
+      #netCanvas, #pinScreen, .lang-toggle, #hero, .loader { display: none !important; }
+      .results { display: block !important; }
+      .pdf-btn { display: none !important; }
+      .card { border: 1px solid #ccc !important; background: white !important; page-break-inside: avoid; margin-bottom: 12px !important; }
+      .card-title { color: #555 !important; }
+      .ip-addr { color: #0066cc !important; }
+      .ip-addr.highlight { color: #006600 !important; }
+      .ip-geo-country { color: #333 !important; }
+      .ip-geo-org { color: #666 !important; }
+      .header-key { color: #cc3300 !important; }
+      .header-val { color: #003399 !important; }
+      .badge-cf { background: #fff3e0 !important; color: #e65100 !important; border: 1px solid #e65100 !important; }
+      .badge-aws { background: #fff8e1 !important; color: #f57f17 !important; border: 1px solid #f57f17 !important; }
+      .badge-clean { background: #e8f5e9 !important; color: #2e7d32 !important; border: 1px solid #2e7d32 !important; }
+      .alert-warning { background: #fff3e0 !important; color: #e65100 !important; border: 1px solid #f68210 !important; }
+      .domain-name { color: #111 !important; }
+      .method-card { background: #f5f5f5 !important; border: 1px solid #ddd !important; color: #555 !important; }
+      .method-card strong { color: #222 !important; }
+      .shodan-port { background: #e8f0ff !important; color: #1a56db !important; border: 1px solid #93c5fd !important; }
+      .shodan-host { background: #ecfdf5 !important; color: #065f46 !important; border: 1px solid #6ee7b7 !important; }
+      .shodan-vuln { background: #fef2f2 !important; color: #991b1b !important; border: 1px solid #fca5a5 !important; }
+      .main { padding: 20px !important; max-width: 100% !important; }
+      .card::after { display: none !important; }
+    }
 
     /* ===== MOBILE ===== */
     @media (max-width: 480px) {
@@ -438,12 +342,15 @@
 
 <canvas id="netCanvas"></canvas>
 
+<!-- Language toggle -->
+<button class="lang-toggle" id="langBtn" onclick="toggleLang()">RU</button>
+
 <!-- PIN Screen -->
 <div id="pinScreen">
   <div class="pin-card">
     <div class="pin-icon">🔐</div>
-    <div class="pin-title">Kirish uchun PIN</div>
-    <div class="pin-subtitle">Real IP Finder — maxfiy panel</div>
+    <div class="pin-title" data-i18n="pinTitle">Kirish uchun PIN</div>
+    <div class="pin-subtitle" data-i18n="pinSubtitle">Real IP Finder — maxfiy panel</div>
 
     <div class="pin-dots">
       <div class="pin-dot" id="d0"></div>
@@ -454,7 +361,6 @@
 
     <div class="pin-error" id="pinError"></div>
 
-    <!-- Number pad -->
     <div class="pin-pad">
       <button class="pad-btn" onclick="padPress('1')">1</button>
       <button class="pad-btn" onclick="padPress('2')">2</button>
@@ -469,17 +375,20 @@
       <button class="pad-btn del" onclick="padDel()">⌫</button>
     </div>
 
-    <button class="pin-submit" id="pinSubmit" onclick="submitPin()" disabled>Kirish</button>
+    <button class="pin-submit" id="pinSubmit" onclick="submitPin()" disabled data-i18n="pinSubmit">Kirish</button>
   </div>
 </div>
 
 <!-- Main App -->
 <div id="hero">
-  <h1>🔍 Real IP Finder</h1>
-  <p class="subtitle">Cloudflare, AWS va boshqa himoyalar orqasidagi haqiqiy server IP manzilini aniqlang</p>
+  <h1 data-i18n="h1">🔍 Real IP Finder</h1>
+  <p class="subtitle" data-i18n="subtitle">Cloudflare, AWS va boshqa himoyalar orqasidagi haqiqiy server IP manzilini aniqlang</p>
   <div class="search-box">
-    <input type="text" id="urlInput" placeholder="example.com yoki https://example.com" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-    <button id="searchBtn" onclick="lookup()">Tekshir</button>
+    <input type="text" id="urlInput"
+      placeholder="example.com yoki https://example.com"
+      data-i18n-placeholder="placeholder"
+      autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    <button id="searchBtn" onclick="lookup()" data-i18n="searchBtn">Tekshir</button>
   </div>
 </div>
 
@@ -491,7 +400,7 @@
       <div class="radar-ring"></div>
       <div class="radar-core"></div>
     </div>
-    <div class="loader-title">Tahlil qilinmoqda<span class="dots"></span></div>
+    <div class="loader-title"><span id="analyzingText" data-i18n="analyzing">Tahlil qilinmoqda</span><span class="dots"></span></div>
     <div class="scan-steps" id="scanSteps"></div>
   </div>
   <div class="results" id="results"></div>
@@ -499,14 +408,141 @@
 
 <script>
 /* ============================================================
+   TRANSLATIONS
+   ============================================================ */
+const TRANSLATIONS = {
+  uz: {
+    pinTitle:     "Kirish uchun PIN",
+    pinSubtitle:  "Real IP Finder — maxfiy panel",
+    pinSubmit:    "Kirish",
+    pinChecking:  "Tekshirilmoqda...",
+    connError:    "Server bilan bog'lanib bo'lmadi",
+    wrongPin:     "Noto'g'ri PIN",
+    h1:           "🔍 Real IP Finder",
+    subtitle:     "Cloudflare, AWS va boshqa himoyalar orqasidagi haqiqiy server IP manzilini aniqlang",
+    placeholder:  "example.com yoki https://example.com",
+    searchBtn:    "Tekshir",
+    analyzing:    "Tahlil qilinmoqda",
+    // Steps
+    step0:  "DNS A/AAAA yozuvlari",
+    step1:  "Cloudflare / AWS tekshiruvi",
+    step2:  "MX — pochta serverlari",
+    step3:  "SPF / TXT / DMARC",
+    step4:  "NS / SOA / SRV yozuvlari",
+    step5:  "SSL sertifikat (crt.sh)",
+    step6:  "AlienVault OTX passiv DNS",
+    step7:  "URLScan.io ma'lumotlar bazasi",
+    step8:  "HackerTarget + RapidDNS",
+    step9:  "Subdomain brute-force (80+)",
+    step10: "ViewDNS IP tarixi",
+    step11: "Shodan InternetDB",
+    step12: "IP Geolokatsiya",
+    // Results
+    cardDomain:    "🌐 Domain",
+    cardMainIP:    "📡 Asosiy IP (DNS A/AAAA)",
+    noIP:          "IP topilmadi",
+    badgeDirect:   "✅ To'g'ridan-to'g'ri",
+    mainDNS:       "Asosiy DNS",
+    protectedMsg:  "Ushbu sayt {name} himoyasi orqasida ishlaydi. Yuqoridagi IP manzillar proxy — haqiqiy server IP emas.",
+    cardRealIP:    "🎯 Haqiqiy IP Izlash Natijalari",
+    noRealIP:      "Haqiqiy IP topilmadi. Server yaxshi himoyalangan.",
+    likelyReal:    "✅ Ehtimoliy haqiqiy IP manzillar ({count} ta):",
+    otherIPs:      "🔸 Boshqa topilgan IP (proxy/CDN, {count} ta):",
+    cardHeaders:   "📋 HTTP Sarlavhalar",
+    cardMethods:   "🔬 Qo'llanilgan metodlar",
+    downloadPDF:   "📄 PDF yuklab olish",
+    errPrefix:     "Xato",
+  },
+  ru: {
+    pinTitle:     "Введите PIN",
+    pinSubtitle:  "Real IP Finder — закрытая панель",
+    pinSubmit:    "Войти",
+    pinChecking:  "Проверяется...",
+    connError:    "Не удалось подключиться к серверу",
+    wrongPin:     "Неверный PIN",
+    h1:           "🔍 Real IP Finder",
+    subtitle:     "Определите реальный IP-адрес сервера за Cloudflare, AWS и другой защитой",
+    placeholder:  "example.com или https://example.com",
+    searchBtn:    "Проверить",
+    analyzing:    "Анализируется",
+    // Steps
+    step0:  "DNS A/AAAA записи",
+    step1:  "Проверка Cloudflare / AWS",
+    step2:  "MX — почтовые серверы",
+    step3:  "SPF / TXT / DMARC",
+    step4:  "NS / SOA / SRV записи",
+    step5:  "SSL сертификат (crt.sh)",
+    step6:  "AlienVault OTX пассивный DNS",
+    step7:  "База данных URLScan.io",
+    step8:  "HackerTarget + RapidDNS",
+    step9:  "Брутфорс субдоменов (80+)",
+    step10: "История IP ViewDNS",
+    step11: "Shodan InternetDB",
+    step12: "IP Геолокация",
+    // Results
+    cardDomain:    "🌐 Домен",
+    cardMainIP:    "📡 Основные IP (DNS A/AAAA)",
+    noIP:          "IP не найден",
+    badgeDirect:   "✅ Прямое подключение",
+    mainDNS:       "Основной DNS",
+    protectedMsg:  "Этот сайт работает за защитой {name}. IP-адреса выше — прокси, а не реальный сервер.",
+    cardRealIP:    "🎯 Результаты поиска реального IP",
+    noRealIP:      "Реальный IP не найден. Сервер хорошо защищён.",
+    likelyReal:    "✅ Вероятные реальные IP ({count} шт.):",
+    otherIPs:      "🔸 Другие IP (прокси/CDN, {count} шт.):",
+    cardHeaders:   "📋 HTTP Заголовки",
+    cardMethods:   "🔬 Использованные методы",
+    downloadPDF:   "📄 Скачать PDF",
+    errPrefix:     "Ошибка",
+  }
+};
+
+let currentLang = localStorage.getItem('lang') || 'uz';
+let lastData = null;
+
+function t(key) {
+  return (TRANSLATIONS[currentLang] && TRANSLATIONS[currentLang][key])
+      || TRANSLATIONS.uz[key] || key;
+}
+
+function applyLang() {
+  document.documentElement.lang = currentLang;
+  document.getElementById('langBtn').textContent = currentLang === 'uz' ? 'RU' : 'UZ';
+
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.dataset.i18n;
+    // Don't overwrite buttons that are in a loading state
+    if (el.id === 'pinSubmit' && el.textContent !== TRANSLATIONS.uz.pinSubmit && el.textContent !== TRANSLATIONS.ru.pinSubmit) return;
+    el.textContent = t(key);
+  });
+
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    el.placeholder = t(el.dataset.i18nPlaceholder);
+  });
+}
+
+function toggleLang() {
+  currentLang = currentLang === 'uz' ? 'ru' : 'uz';
+  localStorage.setItem('lang', currentLang);
+  applyLang();
+  // Re-render results if visible
+  if (lastData && document.getElementById('results').classList.contains('active')) {
+    renderResults(lastData);
+  }
+}
+
+// Apply language on load
+applyLang();
+
+/* ============================================================
    NETWORK CANVAS ANIMATION
    ============================================================ */
 (function () {
   const canvas = document.getElementById('netCanvas');
   const ctx    = canvas.getContext('2d');
   let W, H, nodes, pings;
-  const NODE_COUNT   = 50;
-  const MAX_DIST     = 150;
+  const NODE_COUNT    = 50;
+  const MAX_DIST      = 150;
   const PING_INTERVAL = 900;
 
   function resize() {
@@ -561,8 +597,7 @@
       ctx.moveTo(nodes[a].x, nodes[a].y);
       ctx.lineTo(nodes[b].x, nodes[b].y);
       ctx.strokeStyle = `rgba(88,166,255,${(1 - d / MAX_DIST) * 0.2})`;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+      ctx.lineWidth = 1; ctx.stroke();
     });
 
     nodes.forEach(n => {
@@ -610,7 +645,6 @@
 let pinValue = '';
 let authToken = sessionStorage.getItem('auth_token') || '';
 
-// Check if already authenticated
 if (authToken) {
   document.getElementById('pinScreen').classList.add('hidden');
 }
@@ -636,7 +670,6 @@ function padDel() {
   document.getElementById('pinError').textContent = '';
 }
 
-// Keyboard support for PIN
 document.addEventListener('keydown', e => {
   if (document.getElementById('pinScreen').classList.contains('hidden')) return;
   if (e.key >= '0' && e.key <= '9') padPress(e.key);
@@ -648,7 +681,7 @@ async function submitPin() {
   if (pinValue.length < 4) return;
   const btn = document.getElementById('pinSubmit');
   btn.disabled = true;
-  btn.textContent = 'Tekshirilmoqda...';
+  btn.textContent = t('pinChecking');
 
   try {
     const res  = await fetch('/api/auth', {
@@ -661,29 +694,25 @@ async function submitPin() {
     if (res.ok && data.token) {
       authToken = data.token;
       sessionStorage.setItem('auth_token', authToken);
-      // Fade out pin screen
       const ps = document.getElementById('pinScreen');
       ps.style.transition = 'opacity 0.4s';
       ps.style.opacity = '0';
       setTimeout(() => ps.classList.add('hidden'), 400);
     } else {
-      showPinError(data.error || "Noto'g'ri PIN");
+      showPinError(data.error || t('wrongPin'));
     }
   } catch {
-    showPinError('Server bilan bog\'lanib bo\'lmadi');
+    showPinError(t('connError'));
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Kirish';
+    btn.textContent = t('pinSubmit');
   }
 }
 
 function showPinError(msg) {
-  const input = document.querySelector('.pin-dots');
-  const err   = document.getElementById('pinError');
-  err.textContent = msg;
+  document.getElementById('pinError').textContent = msg;
   pinValue = '';
   updateDots();
-  // Shake the dots
   document.querySelectorAll('.pin-dot').forEach(d => {
     d.style.borderColor = '#f85149';
     d.style.background  = 'transparent';
@@ -697,22 +726,22 @@ function showPinError(msg) {
 }
 
 /* ============================================================
-   MAIN APP
+   LOADER STEPS
    ============================================================ */
-const STEPS = [
-  { icon: '🌐', text: 'DNS A/AAAA yozuvlari',           delay: 0 },
-  { icon: '🛡️', text: 'Cloudflare / AWS tekshiruvi',    delay: 500 },
-  { icon: '📧', text: 'MX — pochta serverlari',          delay: 1100 },
-  { icon: '📋', text: 'SPF / TXT / DMARC',              delay: 1800 },
-  { icon: '🗄️', text: 'NS / SOA / SRV yozuvlari',      delay: 2600 },
-  { icon: '🔐', text: 'SSL sertifikat (crt.sh)',         delay: 3600 },
-  { icon: '👁️', text: 'AlienVault OTX passiv DNS',      delay: 4900 },
-  { icon: '📡', text: "URLScan.io ma'lumotlar bazasi",   delay: 6200 },
-  { icon: '🎯', text: 'HackerTarget + RapidDNS',        delay: 7400 },
-  { icon: '⚡', text: 'Subdomain brute-force (80+)',     delay: 8800 },
-  { icon: '📖', text: 'ViewDNS IP tarixi',               delay: 10200 },
-  { icon: '🔦', text: 'Shodan InternetDB',               delay: 11600 },
-  { icon: '🌍', text: 'IP Geolokatsiya',                 delay: 12800 },
+const STEP_META = [
+  { icon: '🌐', delay: 0 },
+  { icon: '🛡️', delay: 500 },
+  { icon: '📧', delay: 1100 },
+  { icon: '📋', delay: 1800 },
+  { icon: '🗄️', delay: 2600 },
+  { icon: '🔐', delay: 3600 },
+  { icon: '👁️', delay: 4900 },
+  { icon: '📡', delay: 6200 },
+  { icon: '🎯', delay: 7400 },
+  { icon: '⚡', delay: 8800 },
+  { icon: '📖', delay: 10200 },
+  { icon: '🔦', delay: 11600 },
+  { icon: '🌍', delay: 12800 },
 ];
 
 let stepTimers = [], dotTimer = null, stepEls = [];
@@ -721,15 +750,15 @@ function startLoader() {
   const container = document.getElementById('scanSteps');
   container.innerHTML = '';
   stepEls = [];
-  for (const s of STEPS) {
+  for (let i = 0; i < STEP_META.length; i++) {
     const el = document.createElement('div');
     el.className = 'step-item';
-    el.innerHTML = `<span class="step-icon">${s.icon}</span><span>${s.text}</span>`;
+    el.innerHTML = `<span class="step-icon">${STEP_META[i].icon}</span><span>${t('step' + i)}</span>`;
     container.appendChild(el);
     stepEls.push(el);
   }
   stepTimers = [];
-  STEPS.forEach((s, i) => {
+  STEP_META.forEach((s, i) => {
     stepTimers.push(setTimeout(() => {
       stepEls[i].classList.add('visible', 'active');
       stepEls[i].innerHTML += `<span class="step-spinner"></span>`;
@@ -758,6 +787,9 @@ function stopLoader() {
   stepEls.forEach((_, i) => markDone(i));
 }
 
+/* ============================================================
+   MAIN LOOKUP
+   ============================================================ */
 document.getElementById('urlInput').addEventListener('keydown', e => {
   if (e.key === 'Enter') lookup();
 });
@@ -775,6 +807,7 @@ async function lookup() {
   loader.classList.add('active');
   results.classList.remove('active');
   results.innerHTML = '';
+  lastData = null;
   startLoader();
 
   hero.style.minHeight = '22vh';
@@ -793,7 +826,6 @@ async function lookup() {
     });
 
     if (res.status === 401) {
-      // Token expired or invalid — force re-login
       sessionStorage.removeItem('auth_token');
       authToken = '';
       document.getElementById('pinScreen').classList.remove('hidden');
@@ -813,13 +845,16 @@ async function lookup() {
   } catch (err) {
     stopLoader();
     loader.classList.remove('active');
-    results.innerHTML = `<div class="alert alert-error">Xato: ${esc(err.message)}</div>`;
+    results.innerHTML = `<div class="alert alert-error">${t('errPrefix')}: ${esc(err.message)}</div>`;
     results.classList.add('active');
   } finally {
     btn.disabled = false;
   }
 }
 
+/* ============================================================
+   RENDER RESULTS
+   ============================================================ */
 function flagEmoji(code) {
   if (!code || code.length !== 2) return '🌐';
   const o = 0x1F1E6 - 65;
@@ -847,24 +882,29 @@ function shodanLine(shodanData, ip) {
 }
 
 function renderResults(data) {
+  lastData = data;
   const results = document.getElementById('results');
   let html = '';
-  if (data.error) html += `<div class="alert alert-error">Xato: ${esc(data.error)}</div>`;
+
+  // PDF download button
+  html += `<button class="pdf-btn" onclick="downloadPDF()">${t('downloadPDF')}</button>`;
+
+  if (data.error) html += `<div class="alert alert-error">${t('errPrefix')}: ${esc(data.error)}</div>`;
 
   const badgeHtml = data.protection.cloudflare
     ? `<span class="badge badge-cf">☁️ Cloudflare</span>`
     : data.protection.aws
     ? `<span class="badge badge-aws">☁️ AWS</span>`
-    : `<span class="badge badge-clean">✅ To'g'ridan-to'g'ri</span>`;
+    : `<span class="badge badge-clean">${t('badgeDirect')}</span>`;
 
   html += `<div class="card">
-    <div class="card-title">🌐 Domain</div>
+    <div class="card-title">${t('cardDomain')}</div>
     <div class="domain-name">${esc(data.domain)} ${badgeHtml}</div>
   </div>`;
 
-  html += `<div class="card"><div class="card-title">📡 Asosiy IP (DNS A/AAAA)</div>`;
+  html += `<div class="card"><div class="card-title">${t('cardMainIP')}</div>`;
   if (!data.mainIPs.length) {
-    html += `<span class="no-results">IP topilmadi</span>`;
+    html += `<span class="no-results">${t('noIP')}</span>`;
   } else {
     html += `<ul class="ip-list">`;
     for (const ip of data.mainIPs) {
@@ -879,7 +919,7 @@ function renderResults(data) {
         <span class="ip-flag">${flag}</span>
         <span class="ip-addr">${esc(ip)}</span>
         ${geoLine(geo)} ${tag}
-        <span class="ip-source">Asosiy DNS</span>
+        <span class="ip-source">${t('mainDNS')}</span>
       </li>`;
     }
     html += `</ul>`;
@@ -887,22 +927,20 @@ function renderResults(data) {
   html += `</div>`;
 
   if (data.protection.cloudflare || data.protection.aws) {
-    html += `<div class="alert alert-warning">
-      Ushbu sayt <strong>${esc(data.protection.name)}</strong> himoyasi orqasida ishlaydi.
-      Yuqoridagi IP manzillar proxy — haqiqiy server IP emas.
-    </div>`;
+    const protMsg = t('protectedMsg').replace('{name}', esc(data.protection.name));
+    html += `<div class="alert alert-warning">${protMsg}</div>`;
 
-    html += `<div class="card"><div class="card-title">🎯 Haqiqiy IP Izlash Natijalari</div>`;
+    html += `<div class="card"><div class="card-title">${t('cardRealIP')}</div>`;
     const realCandidates  = (data.realIPCandidates || []).filter(c => c.likely);
     const otherCandidates = (data.realIPCandidates || []).filter(c => !c.likely);
 
     if (!data.realIPCandidates.length) {
-      html += `<span class="no-results">Haqiqiy IP topilmadi. Server yaxshi himoyalangan.</span>`;
+      html += `<span class="no-results">${t('noRealIP')}</span>`;
     } else {
       if (realCandidates.length) {
-        html += `<div style="color:#3fb950;font-size:0.78rem;margin-bottom:10px;font-weight:700;">
-          ✅ Ehtimoliy haqiqiy IP manzillar (${realCandidates.length} ta):
-        </div><ul class="ip-list">`;
+        const lbl = t('likelyReal').replace('{count}', realCandidates.length);
+        html += `<div style="color:#3fb950;font-size:0.78rem;margin-bottom:10px;font-weight:700;">${lbl}</div>
+        <ul class="ip-list">`;
         for (const c of realCandidates) {
           const geo = data.geoData && data.geoData[c.ip];
           const sources = c.sources ? c.sources : [c.source];
@@ -919,9 +957,9 @@ function renderResults(data) {
         html += `</ul>`;
       }
       if (otherCandidates.length) {
-        html += `<div style="color:#8b949e;font-size:0.78rem;margin:12px 0 8px;font-weight:700;">
-          🔸 Boshqa topilgan IP (proxy/CDN, ${otherCandidates.length} ta):
-        </div><ul class="ip-list">`;
+        const lbl2 = t('otherIPs').replace('{count}', otherCandidates.length);
+        html += `<div style="color:#8b949e;font-size:0.78rem;margin:12px 0 8px;font-weight:700;">${lbl2}</div>
+        <ul class="ip-list">`;
         for (const c of otherCandidates) {
           const geo = data.geoData && data.geoData[c.ip];
           const tag = c.isCF
@@ -943,7 +981,7 @@ function renderResults(data) {
   }
 
   if (Object.keys(data.headers).length) {
-    html += `<div class="card"><div class="card-title">📋 HTTP Sarlavhalar</div>`;
+    html += `<div class="card"><div class="card-title">${t('cardHeaders')}</div>`;
     for (const [k, v] of Object.entries(data.headers)) {
       html += `<div class="header-row">
         <span class="header-key">${esc(k)}</span>
@@ -954,7 +992,7 @@ function renderResults(data) {
   }
 
   html += `<div class="card">
-    <div class="card-title">🔬 Qo'llanilgan metodlar</div>
+    <div class="card-title">${t('cardMethods')}</div>
     <div class="methods-grid">
       <div class="method-card"><strong>DNS A/AAAA</strong>Asosiy IP manzil</div>
       <div class="method-card"><strong>MX yozuvlari</strong>Pochta serveri IP</div>
@@ -979,6 +1017,201 @@ function renderResults(data) {
   setTimeout(() => results.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
 }
 
+/* ============================================================
+   PDF GENERATION
+   ============================================================ */
+function downloadPDF() {
+  if (!lastData) return;
+  if (!window.jspdf) {
+    alert('jsPDF yuklanmadi. Sahifani yangilang.');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+  const margin     = 15;
+  const pageWidth  = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth   = pageWidth - margin * 2;
+  let y = 20;
+
+  function checkPage(needed) {
+    if (y + (needed || 8) > pageHeight - 15) { doc.addPage(); y = 20; }
+  }
+
+  function sectionTitle(text) {
+    checkPage(14);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(30, 90, 200);
+    doc.text(text, margin, y);
+    y += 2;
+    doc.setDrawColor(30, 90, 200);
+    doc.setLineWidth(0.4);
+    doc.line(margin, y, margin + maxWidth, y);
+    y += 7;
+    doc.setTextColor(0, 0, 0);
+  }
+
+  function bodyText(text, indent) {
+    const lines = doc.splitTextToSize(text, maxWidth - (indent || 0));
+    for (const l of lines) {
+      checkPage(6);
+      doc.text(l, margin + (indent || 0), y);
+      y += 6;
+    }
+  }
+
+  // ---- Header ----
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(30, 90, 200);
+  doc.text('Real IP Finder', margin, y);
+  y += 8;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  const dateStr = new Date().toLocaleString(currentLang === 'ru' ? 'ru-RU' : 'uz-UZ');
+  doc.text(`Report generated: ${dateStr}`, margin, y);
+  y += 5;
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, margin + maxWidth, y);
+  y += 10;
+
+  // ---- Domain & Protection ----
+  sectionTitle('Domain & Protection');
+
+  doc.setFontSize(11);
+  doc.setTextColor(0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Domain:', margin, y);
+  doc.setFont('helvetica', 'normal');
+  doc.text(lastData.domain || '-', margin + 28, y);
+  y += 7;
+
+  doc.setFont('helvetica', 'bold');
+  doc.text('Protection:', margin, y);
+  doc.setFont('helvetica', 'normal');
+  const prot = lastData.protection?.name || 'Direct (no proxy)';
+  doc.text(prot, margin + 32, y);
+  y += 10;
+
+  // ---- Main IPs ----
+  sectionTitle('Main IPs (DNS A/AAAA)');
+  doc.setFontSize(10);
+
+  if (lastData.mainIPs && lastData.mainIPs.length) {
+    for (const ip of lastData.mainIPs) {
+      const geo = lastData.geoData && lastData.geoData[ip];
+      let line = `• ${ip}`;
+      if (geo) {
+        const loc = [geo.city, geo.country].filter(Boolean).join(', ');
+        if (loc) line += `   (${loc})`;
+        if (geo.org) line += `   ${geo.org}`;
+      }
+      bodyText(line, 2);
+    }
+  } else {
+    bodyText('• None found', 2);
+  }
+  y += 4;
+
+  // ---- Real IP Candidates ----
+  const realCandidates  = (lastData.realIPCandidates || []).filter(c => c.likely);
+  const otherCandidates = (lastData.realIPCandidates || []).filter(c => !c.likely);
+
+  if (realCandidates.length) {
+    sectionTitle(`Likely Real IPs (${realCandidates.length})`);
+    doc.setFontSize(10);
+    for (const c of realCandidates) {
+      const geo = lastData.geoData && lastData.geoData[c.ip];
+      let line = `• ${c.ip}  [${c.method || 'unknown'}]`;
+      if (geo) {
+        const loc = [geo.city, geo.country].filter(Boolean).join(', ');
+        if (loc) line += `   ${loc}`;
+      }
+      bodyText(line, 2);
+      // Sources
+      const sources = c.sources || [c.source];
+      bodyText(`  Source: ${sources.join(' | ')}`, 4);
+
+      // Shodan data
+      const s = lastData.shodanData && lastData.shodanData[c.ip];
+      if (s) {
+        if (s.ports?.length)     bodyText(`  Ports: ${s.ports.join(', ')}`, 4);
+        if (s.hostnames?.length) bodyText(`  Hostnames: ${s.hostnames.join(', ')}`, 4);
+        if (s.vulns?.length)     bodyText(`  Vulnerabilities: ${s.vulns.join(', ')}`, 4);
+      }
+      y += 2;
+    }
+    y += 2;
+  }
+
+  if (otherCandidates.length) {
+    sectionTitle(`Other IPs / Proxy / CDN (${otherCandidates.length})`);
+    doc.setFontSize(10);
+    for (const c of otherCandidates) {
+      const tag = c.isCF ? '[Cloudflare]' : c.isAWS ? '[AWS]' : '[CDN]';
+      bodyText(`• ${c.ip}  ${tag}  [${c.method || ''}]`, 2);
+    }
+    y += 4;
+  }
+
+  // ---- HTTP Headers ----
+  const headers = lastData.headers || {};
+  if (Object.keys(headers).length) {
+    sectionTitle('HTTP Response Headers');
+    doc.setFontSize(10);
+    for (const [k, v] of Object.entries(headers)) {
+      const lines = doc.splitTextToSize(`${k}: ${v}`, maxWidth - 4);
+      for (const l of lines) {
+        checkPage(6);
+        doc.text(l, margin + 2, y);
+        y += 6;
+      }
+    }
+    y += 4;
+  }
+
+  // ---- Methods ----
+  sectionTitle('Methods Used');
+  doc.setFontSize(9);
+  const methods = [
+    'DNS A/AAAA', 'MX records', 'SPF/TXT (ip4:)', 'NS/SOA records',
+    'SRV records (SIP, SMTP, IMAP)', 'DMARC reporting domain',
+    'crt.sh SSL certificate transparency', 'AlienVault OTX passive DNS',
+    'URLScan.io database', 'HackerTarget subdomain API',
+    'RapidDNS', 'ViewDNS IP history', 'Subdomain brute-force (80+ names)',
+    'Shodan InternetDB', 'ip-api.com geolocation'
+  ];
+  for (let i = 0; i < methods.length; i += 2) {
+    checkPage(6);
+    const col1 = `• ${methods[i]}`;
+    const col2 = methods[i + 1] ? `• ${methods[i + 1]}` : '';
+    doc.text(col1, margin + 2, y);
+    if (col2) doc.text(col2, margin + maxWidth / 2, y);
+    y += 6;
+  }
+
+  // ---- Footer ----
+  const totalPages = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150);
+    doc.text(`Real IP Finder — Page ${i} / ${totalPages}`, margin, pageHeight - 8);
+    doc.text(`${lastData.domain || ''}`, pageWidth - margin, pageHeight - 8, { align: 'right' });
+  }
+
+  doc.save(`${lastData.domain || 'report'}-ip-report.pdf`);
+}
+
+/* ============================================================
+   HELPERS
+   ============================================================ */
 function esc(str) {
   return String(str ?? '')
     .replace(/&/g,'&amp;').replace(/</g,'&lt;')
